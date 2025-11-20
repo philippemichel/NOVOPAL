@@ -40,10 +40,34 @@ vignettes/*.pdf
 .Renviron
 
 # pkgdown site
-docs/
+# docs/ - Keeping docs for methodology
 
 # translation temp files
 po/*~
 
 # RStudio Connect folder
 rsconnect/
+
+# Project-specific
+# Data files (contain sensitive patient data)
+data/raw/*
+data/processed/*
+
+# Keep directory structure
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# Output files (can be regenerated)
+output/figures/*
+output/tables/*
+output/reports/*
+
+# Keep directory structure
+!output/figures/.gitkeep
+!output/tables/.gitkeep
+!output/reports/.gitkeep
+
+# Keep example or README files
+!data/raw/README.md
+!data/processed/README.md
+!output/README.md

@@ -1,0 +1,416 @@
+---
+title: "NOVOPAL - Étude descriptive et analytique des patients en soins palliatifs"
+subtitle: "Caractéristiques des patients et implications cliniques"
+author: "Philippe MICHEL"
+date: "`r format(Sys.Date(), '%d %B %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    number_sections: true
+    theme: cosmo
+    highlight: tango
+    code_folding: hide
+    df_print: paged
+  word_document:
+    toc: true
+    toc_depth: 3
+    reference_docx: template.docx
+  pdf_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 10,
+  fig.height = 6,
+  dpi = 300
+)
+
+# Chargement des packages
+library(tidyverse)
+library(gtsummary)
+library(survival)
+library(survminer)
+library(knitr)
+library(kableExtra)
+library(flextable)
+
+# Définir le thème des tableaux
+theme_gtsummary_language("fr", decimal.mark = ",", big.mark = " ")
+
+# Configuration du projet
+project_root <- here::here()
+```
+
+# Résumé
+
+Cette étude présente une analyse descriptive et analytique des patients suivis en soins palliatifs. L'objectif principal est de caractériser la population de patients et d'identifier les facteurs associés aux différents outcomes cliniques.
+
+**Points clés :**
+
+- Analyse d'une cohorte de patients en soins palliatifs
+- Caractérisation démographique et clinique
+- Identification des facteurs pronostiques
+- Implications pour l'organisation des soins
+
+---
+
+# Introduction
+
+## Contexte
+
+Les soins palliatifs constituent une approche visant à améliorer la qualité de vie des patients et de leur famille face aux conséquences d'une maladie potentiellement mortelle. Une meilleure compréhension des caractéristiques des patients et de leurs trajectoires de soins est essentielle pour optimiser la prise en charge.
+
+## Objectifs
+
+### Objectif principal
+
+Décrire les caractéristiques des patients suivis en soins palliatifs et analyser les implications cliniques de ces caractéristiques.
+
+### Objectifs secondaires
+
+- Analyser les données démographiques et cliniques
+- Identifier les trajectoires de soins
+- Étudier les facteurs pronostiques
+- Proposer des implications pour l'organisation des soins
+
+---
+
+# Méthodes
+
+## Type d'étude
+
+Étude rétrospective descriptive et analytique sur dossiers de patients suivis en soins palliatifs.
+
+## Population
+
+Patients adultes (≥18 ans) suivis en soins palliatifs au sein de l'établissement durant la période d'étude.
+
+## Variables collectées
+
+- **Démographiques** : âge, sexe
+- **Cliniques** : diagnostic principal, comorbidités, score de Karnofsky, évaluation de la douleur
+- **Prise en charge** : dates d'entrée et de sortie, durée de séjour, statut de sortie
+
+## Analyses statistiques
+
+- **Analyses descriptives** : moyennes, médianes, écarts-types, effectifs et pourcentages
+- **Analyses comparatives** : tests du Chi² ou Fisher pour les variables catégorielles, tests de Wilcoxon ou Kruskal-Wallis pour les variables continues
+- **Analyses de survie** : courbes de Kaplan-Meier, modèles de Cox
+- **Seuil de significativité** : p < 0.05
+
+Toutes les analyses ont été réalisées avec le logiciel R (version `r paste(R.version$major, R.version$minor, sep=".")`).
+
+---
+
+# Résultats
+
+## Import et préparation des données
+
+```{r import, echo=TRUE}
+# Exécution du script d'import
+source(file.path(project_root, "scripts", "01_import.R"))
+```
+
+La cohorte comprend **`r nrow(df_patients)` patients**.
+
+## Analyses descriptives
+
+### Caractéristiques démographiques
+
+```{r demographie}
+# Tableau des caractéristiques démographiques
+df_patients %>%
+  select(age, age_groupe, sexe) %>%
+  tbl_summary(
+    label = list(
+      age ~ "Âge (années)",
+      age_groupe ~ "Groupe d'âge",
+      sexe ~ "Sexe"
+    ),
+    statistic = list(
+      all_continuous() ~ "{mean} ± {sd}",
+      all_categorical() ~ "{n} ({p}%)"
+    )
+  ) %>%
+  modify_header(label ~ "**Caractéristique**") %>%
+  modify_caption("**Tableau 1. Caractéristiques démographiques (N = {N})**") %>%
+  bold_labels() %>%
+  as_kable_extra() %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+```
+
+L'âge moyen des patients est de **`r round(mean(df_patients$age, na.rm = TRUE), 1)` ans** (écart-type : `r round(sd(df_patients$age, na.rm = TRUE), 1)`).
+
+```{r fig_age, fig.cap="Distribution de l'âge des patients"}
+ggplot(df_patients, aes(x = age)) +
+  geom_histogram(binwidth = 5, fill = "steelblue", color = "white", alpha = 0.8) +
+  geom_vline(aes(xintercept = mean(age)), color = "red", linetype = "dashed", linewidth = 1) +
+  labs(
+    title = "Distribution de l'âge des patients",
+    x = "Âge (années)",
+    y = "Effectif"
+  ) +
+  theme_minimal() +
+  theme(plot.title = element_text(face = "bold"))
+```
+
+### Caractéristiques cliniques
+
+```{r clinique}
+# Tableau des caractéristiques cliniques
+df_patients %>%
+  select(diagnostic_principal, comorbidites, karnofsky, douleur_entree) %>%
+  tbl_summary(
+    label = list(
+      diagnostic_principal ~ "Diagnostic principal",
+      comorbidites ~ "Nombre de comorbidités",
+      karnofsky ~ "Score de Karnofsky",
+      douleur_entree ~ "Douleur à l'entrée (0-10)"
+    ),
+    statistic = list(
+      all_continuous() ~ "{median} [{p25} - {p75}]",
+      all_categorical() ~ "{n} ({p}%)"
+    )
+  ) %>%
+  modify_header(label ~ "**Caractéristique**") %>%
+  modify_caption("**Tableau 2. Caractéristiques cliniques**") %>%
+  bold_labels() %>%
+  as_kable_extra() %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+```
+
+```{r fig_diagnostics, fig.cap="Distribution des diagnostics principaux", fig.height=7}
+df_patients %>%
+  count(diagnostic_principal, sort = TRUE) %>%
+  mutate(
+    diagnostic_principal = fct_reorder(diagnostic_principal, n),
+    pct = n / sum(n) * 100
+  ) %>%
+  ggplot(aes(x = diagnostic_principal, y = n)) +
+  geom_col(fill = "steelblue", alpha = 0.8) +
+  geom_text(aes(label = paste0(n, " (", round(pct, 1), "%)")), 
+            hjust = -0.1, size = 3.5) +
+  coord_flip() +
+  labs(
+    title = "Distribution des diagnostics principaux",
+    x = NULL,
+    y = "Nombre de patients"
+  ) +
+  theme_minimal() +
+  theme(plot.title = element_text(face = "bold")) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.15)))
+```
+
+### Prise en charge et outcomes
+
+```{r prise_en_charge}
+# Tableau de la prise en charge
+df_patients %>%
+  select(duree_sejour, statut_sortie) %>%
+  tbl_summary(
+    label = list(
+      duree_sejour ~ "Durée de séjour (jours)",
+      statut_sortie ~ "Statut de sortie"
+    ),
+    statistic = list(
+      duree_sejour ~ "{median} [{p25} - {p75}]"
+    )
+  ) %>%
+  modify_header(label ~ "**Caractéristique**") %>%
+  modify_caption("**Tableau 3. Prise en charge et outcomes**") %>%
+  bold_labels() %>%
+  as_kable_extra() %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+```
+
+La durée médiane de séjour est de **`r median(df_patients$duree_sejour, na.rm = TRUE)` jours** (IQR : `r quantile(df_patients$duree_sejour, 0.25, na.rm = TRUE)` - `r quantile(df_patients$duree_sejour, 0.75, na.rm = TRUE)`).
+
+```{r fig_duree, fig.cap="Distribution de la durée de séjour"}
+ggplot(df_patients, aes(x = duree_sejour)) +
+  geom_histogram(binwidth = 10, fill = "steelblue", color = "white", alpha = 0.8) +
+  geom_vline(aes(xintercept = median(duree_sejour)), color = "red", linetype = "dashed", linewidth = 1) +
+  labs(
+    title = "Distribution de la durée de séjour",
+    x = "Durée de séjour (jours)",
+    y = "Effectif"
+  ) +
+  theme_minimal() +
+  theme(plot.title = element_text(face = "bold"))
+```
+
+## Analyses analytiques
+
+### Comparaisons selon le statut de sortie
+
+```{r comparaison_sortie}
+# Tableau comparatif
+df_patients %>%
+  select(age, sexe, comorbidites, karnofsky, douleur_entree, duree_sejour, statut_sortie) %>%
+  tbl_summary(
+    by = statut_sortie,
+    label = list(
+      age ~ "Âge (années)",
+      sexe ~ "Sexe",
+      comorbidites ~ "Nombre de comorbidités",
+      karnofsky ~ "Score de Karnofsky",
+      douleur_entree ~ "Douleur à l'entrée",
+      duree_sejour ~ "Durée de séjour (jours)"
+    ),
+    statistic = list(
+      all_continuous() ~ "{median} [{p25} - {p75}]",
+      all_categorical() ~ "{n} ({p}%)"
+    )
+  ) %>%
+  add_p() %>%
+  add_overall() %>%
+  modify_header(label ~ "**Caractéristique**") %>%
+  modify_caption("**Tableau 4. Comparaison selon le statut de sortie**") %>%
+  bold_labels() %>%
+  bold_p() %>%
+  as_kable_extra() %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), font_size = 11)
+```
+
+### Analyse de survie
+
+```{r survie_prep}
+# Préparation des données
+df_survie <- df_patients %>%
+  mutate(
+    event = if_else(statut_sortie == "Décès", 1, 0),
+    time = duree_sejour
+  ) %>%
+  filter(!is.na(time) & time > 0)
+
+# Modèle de survie
+surv_fit <- survfit(Surv(time, event) ~ 1, data = df_survie)
+```
+
+```{r fig_survie, fig.cap="Courbe de survie globale", fig.height=7}
+ggsurvplot(
+  surv_fit,
+  data = df_survie,
+  conf.int = TRUE,
+  risk.table = TRUE,
+  risk.table.height = 0.25,
+  ggtheme = theme_minimal(),
+  palette = "steelblue",
+  title = "Courbe de survie globale",
+  xlab = "Temps (jours)",
+  ylab = "Probabilité de survie"
+)
+```
+
+La survie médiane est de **`r round(summary(surv_fit)$table["median"], 1)` jours**.
+
+### Facteurs pronostiques : Modèle de Cox
+
+```{r cox_multivarié}
+# Modèle de Cox multivarié
+cox_model <- coxph(Surv(time, event) ~ age + sexe + comorbidites + karnofsky, 
+                   data = df_survie)
+
+cox_model %>%
+  tbl_regression(
+    exponentiate = TRUE,
+    label = list(
+      age ~ "Âge (années)",
+      sexe ~ "Sexe",
+      comorbidites ~ "Nombre de comorbidités",
+      karnofsky ~ "Score de Karnofsky"
+    )
+  ) %>%
+  bold_p() %>%
+  bold_labels() %>%
+  modify_caption("**Tableau 5. Modèle de Cox multivarié - Facteurs pronostiques**") %>%
+  as_kable_extra() %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+```
+
+---
+
+# Discussion
+
+## Principaux résultats
+
+Cette étude descriptive et analytique a permis de caractériser une cohorte de patients suivis en soins palliatifs :
+
+1. **Profil démographique** : La population étudiée présente un âge moyen élevé, reflétant la typologie habituelle des patients en soins palliatifs.
+
+2. **Caractéristiques cliniques** : La diversité des diagnostics principaux illustre l'hétérogénéité de la population prise en charge.
+
+3. **Prise en charge** : L'analyse des durées de séjour et des statuts de sortie permet d'identifier les patterns de soins.
+
+4. **Facteurs pronostiques** : Les analyses multivariées ont identifié plusieurs facteurs associés à la survie.
+
+## Implications cliniques
+
+Les résultats de cette étude ont plusieurs implications pour l'organisation des soins palliatifs :
+
+- **Personnalisation de la prise en charge** : L'identification de sous-groupes de patients permet d'adapter les ressources.
+- **Planification des soins** : La compréhension des durées de séjour aide à l'organisation des lits.
+- **Accompagnement** : La caractérisation des trajectoires permet un meilleur accompagnement des patients et familles.
+
+## Forces et limites
+
+### Forces
+- Analyse complète des caractéristiques des patients
+- Approche à la fois descriptive et analytique
+- Méthodes statistiques robustes
+
+### Limites
+- Étude rétrospective sur dossiers
+- Données d'un seul centre
+- Possible biais de sélection
+
+## Perspectives
+
+- Extension à d'autres centres pour valider les résultats
+- Analyse longitudinale des trajectoires de soins
+- Étude de la qualité de vie et de la satisfaction des patients
+
+---
+
+# Conclusions
+
+Cette étude descriptive et analytique a permis de caractériser les patients suivis en soins palliatifs et d'identifier plusieurs facteurs associés aux outcomes cliniques. Ces résultats contribuent à une meilleure compréhension de la population prise en charge et peuvent guider l'optimisation de l'organisation des soins.
+
+Les implications cliniques incluent la nécessité d'une approche personnalisée et d'une planification adaptée aux caractéristiques des patients.
+
+---
+
+# Références
+
+Les analyses ont été réalisées avec :
+
+- R Core Team (`r R.version.string`)
+- tidyverse (Wickham et al.)
+- gtsummary (Sjoberg et al.)
+- survival (Therneau et al.)
+- survminer (Kassambara et al.)
+
+---
+
+# Annexes
+
+## Session R
+
+```{r session_info}
+sessionInfo()
+```
+
+## Code source
+
+Le code source complet de cette analyse est disponible dans le dépôt du projet.
+
+---
+
+*Rapport généré le `r format(Sys.time(), '%d %B %Y à %H:%M')`*
