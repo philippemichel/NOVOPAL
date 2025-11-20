@@ -1,0 +1,92 @@
+---
+subtitle: "Plan d'analyse statistique"
+lof: false
+lot: false
+---
+
+# Généralités
+
+Le risque $\alpha$ retenu sera de \num{0.05} & la puissance de \num{0.8}.
+
+Vu le faible nombre de cas on ne fera pas d'hypothèse de normalité. Les variables numériques seront présentées par leur médiane avec les quartiles & comparées grâce à des tests non paramétriques en particulier le test de Wilcoxon ou de Kruskal-Wallis si il y a plus de deux catégories dans la variable de tri. Les variables discrètes seront présentées en nombre avec le pourcentage. L'intervalle de confiance (à 95 %) sera calculé par bootstrap (package `boot` [@boot]). Le test du $\chi^2$ de Spearman sera utilisé sous réserve d'un effectif suffisant, à défaut le test exact de Fischer. Des graphiques seront réalisés pour les résultats importants (package `ggplot2` [@ggplot]).
+
+## Taille de l'échantillon
+
+Il s'agit d'une étude observationnelle simple pour lesquelles il est difficile de préciser un nombre de cas nécessaires en l'absence de test statistique. Néanmoins on peut estimer à environ quatre-vingt-dix cas le minimum nécessaire pour avoir un échantillon utilisable s'il n'y a pas trop de données manquantes.
+
+## Données manquantes
+
+Le décompte des données manquantes sera réalisé & présenté par un tableau ou un graphique. Les lecteurs ayant trop de données manquantes ou non utilisables (\> 20 %) ne seront pas pris en compte après validation par le promoteur. Sinon les données manquantes seront imputées (\glspl{imput} multiples, 150 itérations au maximum --- package `missMDA`[@missmda]) si considérées comme manquant de manière complètement aléatoire (`MCAR`) ou manquant de manière aléatoire (`MAR`).
+
+## Qualité des données
+
+Une analyse de corrélation (package `corr` [@corr]) entre les variables sera réalisée & présentée sur un graphique de corrélation. Si certaines variables se montrent anormalement corrélées elles devront être exclues de l'étude après accord du promoteur.
+
+# Description de la population
+
+## Analyse simple
+
+Plusieurs tableaux présenteront les résultats :
+
+1.  Caractéristiques démographiques des patients (âge, sexe\dots)
+2.  Caractéristiques démographiques des médecins généralistes
+3.  Variables médicales du patient
+4.  Expression des volontés
+5.  Conditions de décès
+6.  Suivi et accompagnement
+
+## Analyse factorielle
+
+Si le nombre de cas recueillis le permet une analyse factorielle en MCA (Analyse de correspondances multiples -- package `FactoMineR` [@facto]) sera réalisée afin d'essyer de mettre en évidence des groupes de patients.
+
+Cette analyse ne pourra être réalisée qu'après transformation des variables numériques en catégories & imputation des données manquantes ce qui n'est possible que si ces dernières ne sont pas trop nombreuses.
+
+# Objectif principal
+
+*Description des profils des patients décédés en 2024 avec le statut “soins palliatifs” au sein de l’hôpital NOVO, incluant l’âge, sexe, situation familiale, autonomie, pathologie principale, comorbidités, et présence d’un projet de soins ou de directives anticipées.*
+
+Ces résultats sont présentés dans la description de la population (tableaux 1, 3 & 4)
+
+# Objectifs secondaires
+
+## Objectif 1
+
+*Analyser les conditions et le lieu du décès (hôpital, domicile, EHPAD, etc.) et leur concordance avec les souhaits exprimés par les patients ou leurs proches.*
+
+LE conditions du décès & les vœux exprimés seront présentés dns un tableau croisé eneprimés en nombre & pourcentage. Une recherche de facteurs liés à la concordance des souhaits (données démographiques, rôle du MG\dots) sera réalisée & présentée dans un tableau simple. Une analyse factorielle sera tentée pour éventuellement mettre en évidence des groupes de patients liés à ce critère.
+
+## Objectif 2
+
+*Évaluer l’implication du médecin généraliste dans la prise en charge palliative (présence, travaille avec l’hôpital, présence dans le projet de soins).*
+
+Les résultats bruts seront dans le tableau 2. des liens avec les facteurs démogaphiques seront recherchés.
+
+## Objectif 3
+
+*Décrire les modalités d’accompagnement par les équipes mobiles de soins palliatifs (EMSP) et les dispositifs de soins à domicile (HAD, SSIAD, IDE libéraux).*
+
+Les résultats bruts seront dans le tableau 6.
+
+## Objectif 4
+
+*Identifier les facteurs associés à un recours plus fréquent à l’hospitalisation (variables sociodémographiques, pathologies, comorbidités, autonomie, absence de directives anticipées, etc.).*
+
+Un tableau présentera les relations potentielles entre le recours à l'hospitalisation (variable `Nombre d’hospitalisation depuis entrée en SP` qui sera discrétisée) -- test de Kruskal-Wallis ou de wilcoxon selon le nombre de catégories.
+
+## Objectif 5
+
+*Explorer les leviers d’amélioration du repérage précoce des situations palliatives et de la continuité des parcours de soins entre domicile et hôpital. (Delta date de décès / date d’entrée dans le parcours SP)*
+
+??? Ne correspond à aucune variable présente dans le tableau de données.
+
+# Technique {.unnumbered}
+
+L'analyse statistique sera réalisée avec le logiciel **R**[@rstat] & divers packages. Outre ceux cités dans le texte ou utilisera en particulier `tidyverse` [@tidy] & `baseph` [@baseph].
+
+Un dépôt GitHub sera utilisé qui ne comprendra que le code & non les données ou résultats. Au besoin un faux tableau de données sera présenté pour permettre des tests.
+
+<https://github.com/philippemichel/NOVOPAL>
+
+\printglossaries
+
+# Bibliographie {.unnumbered}
