@@ -19,6 +19,9 @@ library(corrplot)
 library(biostats)
 library(colorspace)
 library(apyramid)
+library("FactoMineR")
+library("factoextra")
+library(missMDA)
 
 #
 theme_gtsummary_language(language = "fr", decimal.mark = ",")
@@ -243,7 +246,7 @@ dplyr::select(directive_anticipee: changement_souhait) |>
 ## Conditions du décès
 
 ```{r}
-#| label: tbl-volontes
+#| label: tbl-deces
 #| tbl-cap: Expression des volontés
 
 tt |> 
@@ -257,3 +260,37 @@ dplyr::select(lieu_dc_souhait,lieu_dc_reel:contexte_dc,famille_presente  ) |>
    modify_header(label ~ " ") |>
   pexptabph(exp = expx, nomfich = classeur , nomsheet = "volontes", lg = TRUE) 
 ```
+
+# Analyse factorielle
+
+On tente une recherche de groupes de patients par analyse en correspondances multiples (MCA).
+
+```{r}
+#| label: prepa_mca
+#| cache: true
+
+ttn <- tt |> 
+  dplyr::select(
+    site:famille_presente)
+zz <- estim_ncpMCA(ttn)
+zz <- zz$ncp
+ttn <- imputeMCA(ttn, ncp = zz)
+ttn <- ttn$completeObs
+```
+
+```{r}
+#| label: fig-mcavar
+#| fig-cap: Représnetaion des variables
+
+res.mca <- MCA(ttn, graph = FALSE)
+
+fviz_mca_var(res.mca,
+             col.var = "contrib",
+             gradient.cols = c("blue", "yellow", "red"),
+             repel = TRUE ,   
+             select.var = list(contrib = 20))
+
+
+```
+
+On voit se dessiner sur l'axe des ordonnées une opposition entre les patients bien suivis (médecin traitant, directives anticipées, projet de soin \dots) qui sont volontiers décédés à leur domicile s'opposant à mal suivi, SDF, etc. et siur l'axe des abscisses un groupe rural, non cancéreux mais avec des troubles cognitifs. 

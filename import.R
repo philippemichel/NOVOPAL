@@ -16,6 +16,7 @@ library("lubridate")
 library("labelled")
 
 
+
 # Import data -------------------------------------------------------------
 
 tt <- read_ods("datas/novopal.ods", sheet = "BDD", na = c("", " ", "NC")) |>
@@ -34,7 +35,18 @@ tt <- read_ods("datas/novopal.ods", sheet = "BDD", na = c("", " ", "NC")) |>
     age_mt,
     "< 35 ans", "[35;45[", "[45;55[", "[55;65["
   )) |>
-  mutate(statut_oms = as.factor(statut_oms))
+  mutate(statut_oms = as.factor(statut_oms)) |>
+  mutate(nb_hsop = as.factor(fct_recode(as.character(nb_hsop),
+    "3 et plus" = "3",
+    "3 et plus" = "4",
+    "3 et plus" = "5"
+  ))) |>
+  mutate(nb_urg = as.factor(fct_recode(as.character(nb_urg),
+    "3 et plus" = "3",
+    "3 et plus" = "4",
+    "3 et plus" = "5",
+    "3 et plus" = "6"
+  )))
 
 bn <- read_ods("datas/novopal.ods", sheet = "bnom", na = c("", " ", "NC"))
 var_label(tt) <- bn$code
@@ -44,6 +56,7 @@ tt <- tt |>
   mutate(delai_deces = as.numeric(tt$date_dc - tt$date_contact)) |>
   dplyr::select(-starts_with("date")) |>
   dplyr::select(-motif_urg)
+
 var_label(tt$delai_contact) <- "Délai diagnostic / contact EMSP (j)"
 var_label(tt$delai_deces) <- "Délai contact EMSP/décès (j)"
 
