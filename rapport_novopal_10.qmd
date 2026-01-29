@@ -1,0 +1,259 @@
+---
+subtitle: "Rapport statistique V1.0"
+---
+
+```{r}
+#| label: setup
+
+rm(list = ls())
+#
+library(baseph)
+library(tidyverse)
+library(gtsummary)
+library(kableExtra)
+library(lubridate)
+library(labelled)
+library(epiDisplay)
+library(visdat)
+library(corrplot)
+library(biostats)
+library(colorspace)
+library(apyramid)
+
+#
+theme_gtsummary_language(language = "fr", decimal.mark = ",")
+options(OutDec = ",")
+#
+load("datas/novopal.RData")
+expx <- FALSE
+classeur <- "novopal1.ods"
+# if (exp){system(paste0("rm -f ",classeur))}
+#
+theme_gtsummary_language(language = "fr", decimal.mark = ",")
+theme_gtsummary_journal(journal = "jama")
+options(OutDec = ",")
+ptest <- list(all_continuous() ~ "t.test", all_categorical() ~ "chisq.test")
+stt <- list(
+  all_continuous() ~ "{mean} ± {sd}",
+  all_categorical() ~ "{n}/{N} ({p}%)"
+)
+```
+
+Pour toutes les variables binaire (oui/non), seul le code "Oui" est présenté dans les tableaux.
+
+
+# Validation de la population
+
+L'échantillon comporte `r nrow(tt)` cas.
+
+## Données manquantes
+
+```{r}
+#| label: fig-manq
+#| fig-cap: Données manquantes
+#| fig-asp: 0.8
+
+vis_dat(tt)
+```
+
+Les seules données manquantes gênantes concernent les souhaits des patients. 
+
+## Corrélations
+
+On recherche des corrélations non prévues qui pourraient être gênantes dans l'analyse.
+
+```{r}
+#| label: fig-cor
+#| fig-cap: Corrélations
+
+zz <- tt |> 
+  dplyr::select(- id) |> 
+  mutate(across(where(is.factor), ~ as.numeric(.x)))
+
+zz_cor <- cor(zz, use = "pairwise.complete.obs")
+
+corrplot(zz_cor,
+         type = 'lower',
+         title = "Matrice de corrélation",
+         tl.cex = 0.5,
+         diag = FALSE)
+```
+
+Les corrélations retrouvées étaient prévisibles (ex : troubles cognitifs & tutelle). Seules certaines corrélations ente le délai contact/décès méritent d'être approfondies.
+
+# Description de la population
+
+## Caractéristiques générales
+
+```{r}
+#| label: tbl-pat
+#| tbl-cap: Patient
+
+tt |> 
+dplyr::select(site: distance_ch) |> 
+ tbl_summary(missing = "no",
+              statistic = stt) |> 
+   bold_labels() |> 
+   modify_header(label ~ " ") |>
+  pexptabph(exp = expx, nomfich = classeur , nomsheet = "demog", lg = TRUE) 
+```
+
+
+```{r}
+#| label: fig-pyrpat
+#| fig-cap: Pyramide des âges (patients)
+
+tt |> 
+apyramid::age_pyramid(age_dc, sexe,
+                      show_midpoint = FALSE) +  
+  theme_minimal() +
+    labs(
+    title = "Pyramide des âges (patients)",
+    X = "Âge",
+    y = "Nombre de cas"
+  ) +
+  theme_light() +
+  scale_y_continuous(labels = c("Féminin","Masculin"), breaks = c(-30,30)) +
+  theme(
+    plot.title = element_text(size = 14, face = "bold"),
+    plot.subtitle = element_text(size = 12),
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(,
+      size = 12,
+      angle = 90,
+      vjust = .5
+    ),
+    axis.text.x = element_text(size = 12),
+    axis.text.y = element_text(size = 12),
+    legend.position = "none"
+  )
+```
+
+## Médecin traitant
+
+
+```{r}
+#| label: tbl-mt
+#| tbl-cap: Médecin traitant
+
+tt |> 
+dplyr::select(mt: formation_sp) |> 
+ tbl_summary(missing = "no",
+              statistic = stt) |> 
+   bold_labels() |> 
+   modify_header(label ~ " ") |>
+  pexptabph(exp = expx, nomfich = classeur , nomsheet = "mt", lg = TRUE) 
+```
+
+```{r}
+#| label: fig-pyrmed
+#| fig-cap: Pyramide des âges (Médecin traitant)
+
+tt |> 
+apyramid::age_pyramid(age_mt, sexe_mt,
+                      show_midpoint = FALSE) +  
+  theme_minimal() +
+    labs(
+    title = "Pyramide des âges (Médecin traitant)",
+    X = "Âge",
+    y = "Nombre de cas"
+  ) +
+  theme_light() +
+  scale_y_continuous(labels = c("Féminin","Masculin"), breaks = c(-30,30)) +
+  theme(
+    plot.title = element_text(size = 14, face = "bold"),
+    plot.subtitle = element_text(size = 12),
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(,
+      size = 12,
+      angle = 90,
+      vjust = .5
+    ),
+    axis.text.x = element_text(size = 12),
+    axis.text.y = element_text(size = 12),
+    legend.position = "none"
+  )
+```
+
+
+## Pathologies & parcours médical
+
+```{r}
+#| label: tbl-patho
+#| tbl-cap: Pathologies
+
+tt |> 
+dplyr::select(cancer: statut_oms) |> 
+ tbl_summary(missing = "no",
+              statistic = stt,
+             ,value = list(cancer = "Cancéreuse",
+                       diabete = "Oui",
+                      cardiovasculaire = "Oui",
+                      neuro_vasculaire = "Oui",
+                     neurodegenerative = "Oui",
+                     trouble_cognitifs = "Oui",
+                     respiratoire = "Oui",
+                     inflammatoire = "Oui",
+                     insuffisant_renal = "Oui",
+                     psychiatrique = "Oui"
+                     )) |> 
+   bold_labels() |> 
+   modify_header(label ~ " ") |>
+  pexptabph(exp = expx, nomfich = classeur , nomsheet = "patho", lg = TRUE) 
+```
+
+```{r}
+#| label: tbl-parcours
+#| tbl-cap: parcours médical
+
+tt |> 
+dplyr::select(lata: projett_soin,visite_emsp,suivi_mt, soins_domicile: delai_deces) |> 
+ tbl_summary(missing = "no",
+             value = list(lata  = "Oui",
+                           projett_soin  = "Oui",
+                           visite_emsp  = "Oui",
+                           suivi_mt  = "Oui",
+                           soins_domicile  = "Oui"),
+                           
+              statistic = stt) |> 
+   bold_labels() |> 
+   modify_header(label ~ " ") |>
+  pexptabph(exp = expx, nomfich = classeur , nomsheet = "parcours", lg = TRUE) 
+```
+
+
+## Expression des volontés
+
+
+```{r}
+#| label: tbl-volontes
+#| tbl-cap: Expression des volontés
+
+tt |> 
+dplyr::select(directive_anticipee: changement_souhait) |> 
+ tbl_summary(missing = "no",
+             value = list(directive_anticipee  = "Oui",
+                           changement_souhait  = "Oui"),
+              statistic = stt) |> 
+   bold_labels() |> 
+   modify_header(label ~ " ") |>
+  pexptabph(exp = expx, nomfich = classeur , nomsheet = "volontes", lg = TRUE) 
+```
+
+## Conditions du décès
+
+```{r}
+#| label: tbl-volontes
+#| tbl-cap: Expression des volontés
+
+tt |> 
+dplyr::select(lieu_dc_souhait,lieu_dc_reel:contexte_dc,famille_presente  ) |> 
+ tbl_summary(missing = "no",
+             value = list(famille_presente  = "Oui",
+                          lieu_dc_correct  = "Oui",
+                          sedation_profonde  = "Oui") ,
+              statistic = stt) |> 
+   bold_labels() |> 
+   modify_header(label ~ " ") |>
+  pexptabph(exp = expx, nomfich = classeur , nomsheet = "volontes", lg = TRUE) 
+```

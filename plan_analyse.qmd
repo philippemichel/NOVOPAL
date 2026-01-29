@@ -12,7 +12,7 @@ Vu le faible nombre de cas on ne fera pas d'hypothèse de normalité. Les variab
 
 ## Taille de l'échantillon
 
-Il s'agit d'une étude observationnelle simple pour lesquelles il est difficile de préciser un nombre de cas nécessaires en l'absence de test statistique. Néanmoins on peut estimer à environ quatre-vingt-dix cas le minimum nécessaire pour avoir un échantillon utilisable s'il n'y a pas trop de données manquantes.
+Il s'agit d'une étude observationnelle simple pour lesquelles il est difficile de préciser un nombre de cas nécessaires en l'absence de test statistique. Néanmoins on peut estimer à environ quatre-vingt-dix cas le strict minimum nécessaire pour avoir un échantillon utilisable s'il n'y a pas trop de données manquantes.
 
 ## Données manquantes
 
@@ -53,13 +53,13 @@ Ces résultats sont présentés dans la description de la population (tableaux 1
 
 *Analyser les conditions et le lieu du décès (hôpital, domicile, EHPAD, etc.) et leur concordance avec les souhaits exprimés par les patients ou leurs proches.*
 
-LE conditions du décès & les vœux exprimés seront présentés dns un tableau croisé eneprimés en nombre & pourcentage. Une recherche de facteurs liés à la concordance des souhaits (données démographiques, rôle du MG\dots) sera réalisée & présentée dans un tableau simple. Une analyse factorielle sera tentée pour éventuellement mettre en évidence des groupes de patients liés à ce critère.
+Les conditions du décès & les vœux exprimés seront présentés dns un tableau croisé exprimés en nombre & pourcentage. Une recherche de facteurs liés à la concordance des souhaits (données démographiques, rôle du MG\dots) sera réalisée & présentée dans un tableau simple. Une analyse factorielle sera tentée pour éventuellement mettre en évidence des groupes de patients liés à ce critère.
 
 ## Objectif 2
 
 *Évaluer l’implication du médecin généraliste dans la prise en charge palliative (présence, travaille avec l’hôpital, présence dans le projet de soins).*
 
-Les résultats bruts seront dans le tableau 2. des liens avec les facteurs démogaphiques seront recherchés.
+Les résultats bruts seront dans le tableau 2. des liens avec les facteurs démographiques seront recherchés (test de Kruskal-Wallis ou de Student selon le nombre de catégories).
 
 ## Objectif 3
 
@@ -78,6 +78,9 @@ Un tableau présentera les relations potentielles entre le recours à l'hospital
 *Explorer les leviers d’amélioration du repérage précoce des situations palliatives et de la continuité des parcours de soins entre domicile et hôpital. (Delta date de décès / date d’entrée dans le parcours SP)*
 
 ??? Ne correspond à aucune variable présente dans le tableau de données.
+
+## Objectif 6
+**Étudier le délai d’orientation vers les soins palliatif**
 
 # Technique {.unnumbered}
 
