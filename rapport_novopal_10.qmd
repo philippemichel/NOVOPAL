@@ -11,19 +11,18 @@ library(baseph)
 library(tidyverse)
 library(gtsummary)
 library(kableExtra)
-library(lubridate)
+library("forestmodel")
 library(labelled)
 library(epiDisplay)
 library(visdat)
 library(corrplot)
 library(biostats)
-library(colorspace)
+library("colorspace")
 library(apyramid)
 library("FactoMineR")
 library("factoextra")
 library(missMDA)
 library("ggsci")
-
 #
 theme_gtsummary_language(language = "fr", decimal.mark = ",")
 options(OutDec = ",")
@@ -227,6 +226,7 @@ dplyr::select(lata: projett_soin,visite_emsp,suivi_mt, soins_domicile: delai_dec
   pexptabph(exp = expx, nomfich = classeur , nomsheet = "parcours", lg = TRUE) 
 ```
 
+Sur les 78 caspour lesquels la durée de suivi par l'emsp est possible, 50 (68 %) ont une durée de suivi inférieure à 30 jours.
 
 ## Expression des volontés
 
@@ -279,7 +279,7 @@ L'analyse factorielle est purement descriptive et exploratoire. Il n'y a aucun t
 
 ttn <- tt |>
   dplyr::select(
-    site:famille_presente
+    site:soins_domicile
   )
 # zz <- estim_ncpMCA(ttn)
 # zz <- zz$ncp
@@ -297,7 +297,7 @@ rtt <- MCA(ttn, graph = FALSE)
 fviz_screeplot(rtt, addlabels = TRUE, ylim = c(0, 10))
 ```
 
-Les deux premières dimensions (les seules représentées sur les schémas suivants) ne représentent que \qty{15.6}{\percent} de la variance totale.
+Les deux premières dimensions (les seules représentées sur les schémas suivants) ne représentent que \qty{15.8}{\percent} de la variance totale.
 
 ```{r}
 #| label: fig-mcavar
@@ -339,3 +339,96 @@ title = "Représentation des individus selon la pathologie") +
 ```
 
 Le suivi des patients cancéreux semble différent de celui des autres patients. 
+
+# Critères secondaires
+
+## Objectif 1
+
+*Analyser les conditions et le lieu du décès (hôpital, domicile, EHPAD, etc.) et leur concordance avec les souhaits exprimés par les patients ou leurs proches.*
+
+Voir les tableaux @tbl-1voeux & @tbl-deces.
+
+```{r}
+#| label: 1prepa
+#| 
+zz <- tt |>
+  dplyr::select(lieu_dc_souhait, lieu_dc_reel) |> 
+  drop_na() 
+```
+
+
+Les données n'ont été recueillies que pour `r nrow(zz)` patients. Noter que 13 aptients ont changer de souhait, initialement le domicile pour l'USP.
+
+### Vœux & réalité
+
+```{r}
+#| label: tbl-1voeux
+#| tbl-cap: 'Lieu du décès : vœux du patient vs réalité'
+
+zz |> 
+  tbl_cross(
+    row = lieu_dc_souhait,
+    col = lieu_dc_reel,
+    missing = "no",
+    percent = "row"
+  ) |> 
+  bold_labels() |> 
+  modify_header(label ~ " ") |>
+  pexptabph(exp = expx, nomfich = classeur , nomsheet = "voeux", lg = TRUE)
+
+```
+
+### Facteurs associés au respect des souhaits
+
+```{r}
+#| label: tbl-lieudcfact1
+#| tbl-cap: Facteurs associés au respect des souhaits
+#| 
+tt |>
+  dplyr::select(lieu_dc_correct, sexe:mt, cancer :directive_anticipee, visite_emsp, suivi_mt , soins_domicile : delai_deces) |>
+  drop_na(lieu_dc_correct) |>
+  tbl_summary(by = lieu_dc_correct, 
+              missing = "no", 
+              percent = "row") |> 
+  add_p(test = ptest) |> 
+  bold_p() |>
+    bold_labels() |> 
+  modify_header(label ~ " ") |>
+  pexptabph(exp = expx, nomfich = classeur , nomsheet = "voeuxfact1", lg = TRUE)
+```
+
+
+```{r}
+#| label: fig-lieudcfact2
+#| fig-cap: Facteurs associés au respect des souhaits
+
+ttn <- imputeMCA(tt[,-1], ncp = 3)
+ttn <- ttn$completeObs
+var_label(ttn) <- var_label(tt[,-1])
+
+glm(formula = lieu_dc_correct ~ tutelle + diabete + trouble_cognitifs + + projett_soin + 
+    visite_emsp +
+    soins_domicile + delai_deces, family = "binomial", data = ttn) |> 
+  forest_model(format_options = list(
+   text_size = 3))
+```
+En analyse multivariée (régression logarithmique) seule la présence de soin à domicile semble influer sur le respect des souhaits du patient.
+
+
+## Objectif 2
+*Évaluer l’implication du médecin généraliste dans la prise en charge palliative.*
+
+Voir le tableau @tbl-mt.
+
+
+
+## Objectif 3
+*Décrire les modalités d’accompagnement par les \glspl{emsp} et les dispositifs de soins à domicile.*
+
+
+
+## Objectif 4
+*Identifier les facteurs associés à un recours plus fréquent à l’hospitalisation.*
+
+## Objectif 5
+*Explorer les leviers d’amélioration du repérage précoce des situations palliatives et de la continuité des parcours de soins entre domicile et hôpital.* 
