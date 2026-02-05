@@ -22,6 +22,7 @@ library(apyramid)
 library("FactoMineR")
 library("factoextra")
 library(missMDA)
+library("ggsci")
 
 #
 theme_gtsummary_language(language = "fr", decimal.mark = ",")
@@ -42,7 +43,9 @@ stt <- list(
 )
 ```
 
-Pour toutes les variables binaire (oui/non), seul le code "Oui" est présenté dans les tableaux.
+\begin{notebox}[Attention !]
+Pour toutes les variables binaire (oui/non), seul le code "Oui" est présenté dans les tableaux
+\end{notebox}
 
 
 # Validation de la population
@@ -82,7 +85,7 @@ corrplot(zz_cor,
          diag = FALSE)
 ```
 
-Les corrélations retrouvées étaient prévisibles (ex : troubles cognitifs & tutelle). Seules certaines corrélations ente le délai contact/décès méritent d'être approfondies.
+Les corrélations retrouvées étaient prévisibles (ex : troubles cognitifs & tutelle). Seules certaines corrélations concernant le délai contact/décès méritent d'être approfondies.
 
 # Description de la population
 
@@ -265,32 +268,74 @@ dplyr::select(lieu_dc_souhait,lieu_dc_reel:contexte_dc,famille_presente  ) |>
 
 On tente une recherche de groupes de patients par analyse en correspondances multiples (MCA).
 
+
+\begin{notebox}[Attention !]
+L'analyse factorielle est purement descriptive et exploratoire. Il n'y a aucun test statistique associé à cette analyse.
+\end{notebox}
+
 ```{r}
 #| label: prepa_mca
 #| cache: true
 
-ttn <- tt |> 
+ttn <- tt |>
   dplyr::select(
-    site:famille_presente)
-zz <- estim_ncpMCA(ttn)
-zz <- zz$ncp
+    site:famille_presente
+  )
+# zz <- estim_ncpMCA(ttn)
+# zz <- zz$ncp
+zz <- 4
 ttn <- imputeMCA(ttn, ncp = zz)
 ttn <- ttn$completeObs
+#
+rtt <- MCA(ttn, graph = FALSE)
 ```
 
 ```{r}
-#| label: fig-mcavar
-#| fig-cap: Représnetaion des variables
+#| label: macquali
+#| fig-cap: Qualité de la représentation
 
-res.mca <- MCA(ttn, graph = FALSE)
-
-fviz_mca_var(res.mca,
-             col.var = "contrib",
-             gradient.cols = c("blue", "yellow", "red"),
-             repel = TRUE ,   
-             select.var = list(contrib = 20))
-
-
+fviz_screeplot(rtt, addlabels = TRUE, ylim = c(0, 10))
 ```
 
-On voit se dessiner sur l'axe des ordonnées une opposition entre les patients bien suivis (médecin traitant, directives anticipées, projet de soin \dots) qui sont volontiers décédés à leur domicile s'opposant à mal suivi, SDF, etc. et siur l'axe des abscisses un groupe rural, non cancéreux mais avec des troubles cognitifs. 
+Les deux premières dimensions (les seules représentées sur les schémas suivants) ne représentent que \qty{15.6}{\percent} de la variance totale.
+
+```{r}
+#| label: fig-mcavar
+#| fig-cap: Représentation des variables
+
+fviz_mca_var(rtt,
+             col.var = "contrib",
+             repel = TRUE ,   
+             select.var = list(contrib = 16)) +
+ scale_color_gsea()
+```
+
+On voit se dessiner sur l'axe des ordonnées une opposition entre les patients bien suivis (médecin traitant, directives anticipées, projet de soin \dots) qui sont volontiers décédés à leur domicile s'opposant à mal suivi, SDF, etc. et sur l'axe des abscisses un groupe rural, non cancéreux mais avec des troubles cognitifs. 
+
+```{r}
+#| label: fig-mcaind1
+#| fig-cap: Représentation des individus selon le respect des souhaits
+
+fviz_mca_ind(rtt, 
+             geom = "point",
+             habillage = "lieu_dc_correct",
+title = "Représentation des individus selon le respect des souhaits") +
+  scale_color_lancet()
+```
+
+
+Le respect du lieu de décès souhaité semble être un critère important dans la différenciation des patients. 
+
+
+```{r}
+#| label: fig-mcaind2
+#| fig-cap: Représentation des individus selon la pathologie
+
+fviz_mca_ind(rtt, 
+             geom = "point",
+             habillage = "cancer",
+title = "Représentation des individus selon la pathologie") +
+  scale_color_lancet()
+```
+
+Le suivi des patients cancéreux semble différent de celui des autres patients. 
