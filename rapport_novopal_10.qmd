@@ -1,5 +1,6 @@
 ---
-subtitle: "Rapport statistique V1.0"
+subtitle: "Rapport statistique V1.1"
+cache: false
 ---
 
 ```{r}
@@ -22,18 +23,21 @@ library(apyramid)
 library("FactoMineR")
 library("factoextra")
 library(missMDA)
+library("readODS")
 library("ggsci")
+library("survival")
+library("survminer")
 #
 theme_gtsummary_language(language = "fr", decimal.mark = ",")
 options(OutDec = ",")
 #
 load("datas/novopal.RData")
-expx <- FALSE
+expx <- TRUE
 classeur <- "novopal1.ods"
 # if (exp){system(paste0("rm -f ",classeur))}
 #
 theme_gtsummary_language(language = "fr", decimal.mark = ",")
-theme_gtsummary_journal(journal = "jama")
+# theme_gtsummary_journal(journal = "jama")
 options(OutDec = ",")
 ptest <- list(all_continuous() ~ "t.test", all_categorical() ~ "chisq.test")
 stt <- list(
@@ -42,10 +46,18 @@ stt <- list(
 )
 ```
 
+\bigskip
+
 \begin{notebox}[Attention !]
-Pour toutes les variables binaire (oui/non), seul le code "Oui" est présenté dans les tableaux
+Pour toutes les variables binaire (oui/non), seul le code "`Oui`" est présenté dans la plupart des tableaux.
 \end{notebox}
 
+
+\begin{warningbox}[Tests statistiques]
+En raison du très (trop) grand nombre de test un facteur de correction a été appliqué sur les tests statistiques pour les tableaux étudiant les facteurs pronostics ou associés. 
+
+C'est  la colonne `q-value` qui doit être prise en compte.
+\end{warningbox}
 
 # Validation de la population
 
@@ -61,7 +73,7 @@ L'échantillon comporte `r nrow(tt)` cas.
 vis_dat(tt)
 ```
 
-Les seules données manquantes gênantes concernent les souhaits des patients. 
+Les seules données manquantes gênantes concernent les souhaits des patients.
 
 ## Corrélations
 
@@ -84,7 +96,8 @@ corrplot(zz_cor,
          diag = FALSE)
 ```
 
-Les corrélations retrouvées étaient prévisibles (ex : troubles cognitifs & tutelle). Seules certaines corrélations concernant le délai contact/décès méritent d'être approfondies.
+Les corrélations retrouvées étaient prévisibles (ex : troubles cognitifs & tutelle).
+
 
 # Description de la population
 
@@ -109,7 +122,8 @@ dplyr::select(site: distance_ch) |>
 #| fig-cap: Pyramide des âges (patients)
 
 tt |> 
-apyramid::age_pyramid(age_dc, sexe,
+  rename('Âge' = age_dc) |>
+apyramid::age_pyramid('Âge', sexe,
                       show_midpoint = FALSE) +  
   theme_minimal() +
     labs(
@@ -123,63 +137,18 @@ apyramid::age_pyramid(age_dc, sexe,
     plot.title = element_text(size = 14, face = "bold"),
     plot.subtitle = element_text(size = 12),
     axis.title.x = element_text(size = 12),
-    axis.title.y = element_text(,
+    axis.title.y = element_text(
       size = 12,
       angle = 90,
       vjust = .5
     ),
-    axis.text.x = element_text(size = 12),
+    axis.text.x = element_blank(),
     axis.text.y = element_text(size = 12),
     legend.position = "none"
   )
 ```
 
-## Médecin traitant
-
-
-```{r}
-#| label: tbl-mt
-#| tbl-cap: Médecin traitant
-
-tt |> 
-dplyr::select(mt: formation_sp) |> 
- tbl_summary(missing = "no",
-              statistic = stt) |> 
-   bold_labels() |> 
-   modify_header(label ~ " ") |>
-  pexptabph(exp = expx, nomfich = classeur , nomsheet = "mt", lg = TRUE) 
-```
-
-```{r}
-#| label: fig-pyrmed
-#| fig-cap: Pyramide des âges (Médecin traitant)
-
-tt |> 
-apyramid::age_pyramid(age_mt, sexe_mt,
-                      show_midpoint = FALSE) +  
-  theme_minimal() +
-    labs(
-    title = "Pyramide des âges (Médecin traitant)",
-    X = "Âge",
-    y = "Nombre de cas"
-  ) +
-  theme_light() +
-  scale_y_continuous(labels = c("Féminin","Masculin"), breaks = c(-30,30)) +
-  theme(
-    plot.title = element_text(size = 14, face = "bold"),
-    plot.subtitle = element_text(size = 12),
-    axis.title.x = element_text(size = 12),
-    axis.title.y = element_text(,
-      size = 12,
-      angle = 90,
-      vjust = .5
-    ),
-    axis.text.x = element_text(size = 12),
-    axis.text.y = element_text(size = 12),
-    legend.position = "none"
-  )
-```
-
+\newpage
 
 ## Pathologies & parcours médical
 
@@ -191,7 +160,7 @@ tt |>
 dplyr::select(cancer: statut_oms) |> 
  tbl_summary(missing = "no",
               statistic = stt,
-             ,value = list(cancer = "Cancéreuse",
+             value = list(cancer = "Cancéreuse",
                        diabete = "Oui",
                       cardiovasculaire = "Oui",
                       neuro_vasculaire = "Oui",
@@ -207,26 +176,43 @@ dplyr::select(cancer: statut_oms) |>
   pexptabph(exp = expx, nomfich = classeur , nomsheet = "patho", lg = TRUE) 
 ```
 
-```{r}
-#| label: tbl-parcours
-#| tbl-cap: parcours médical
+\newpage
 
-tt |> 
-dplyr::select(lata: projett_soin,visite_emsp,suivi_mt, soins_domicile: delai_deces) |> 
- tbl_summary(missing = "no",
-             value = list(lata  = "Oui",
-                           projett_soin  = "Oui",
-                           visite_emsp  = "Oui",
-                           suivi_mt  = "Oui",
-                           soins_domicile  = "Oui"),
-                           
-              statistic = stt) |> 
-   bold_labels() |> 
+### Motif des passages aux urgences
+
+```{r}
+#| label: tbl-motifu
+#| tbl-cap: Motif des passages aux urgences
+
+zz <- as.character(tt$motif_urg) |> 
+  na.omit()
+aa <- str_split(zz,"_", simplify = TRUE)
+
+bb <- as_tibble(c(aa[,1], aa[,2], aa[,3],aa[,4], aa[,5], aa[,6])) |> 
+mutate(Motif = fct_recode(value,
+    "Anomalie du bilan biologique" = "1",
+    "Répit familial" = "10",
+    "Tentative de suicide" = "11",
+    "Altération de l'état général" = "2",
+    "Dyspnée" = "3",
+    "Douleurs" = "4",
+    "Sepsis" = "5",
+    "Vomissements" = "6",
+    "Trouble neurologique" = "7",
+    "Chutes" = "8",
+    "Trouble de l'élimination" = "9"
+  )) |> 
+  dplyr::select(Motif) |> 
+  dplyr::filter(Motif != "") |> 
+  mutate(Motif = factor(Motif))
+bb$Motif = fct_infreq(bb$Motif)
+tbl_summary(bb,
+            statistic = stt)|> 
+     bold_labels() |> 
    modify_header(label ~ " ") |>
-  pexptabph(exp = expx, nomfich = classeur , nomsheet = "parcours", lg = TRUE) 
+  pexptabph(exp = expx, nomfich = classeur , nomsheet = "motifu", lg = TRUE) 
 ```
 
-Sur les 78 caspour lesquels la durée de suivi par l'emsp est possible, 50 (68 %) ont une durée de suivi inférieure à 30 jours.
 
 ## Expression des volontés
 
@@ -246,23 +232,6 @@ dplyr::select(directive_anticipee: changement_souhait) |>
   pexptabph(exp = expx, nomfich = classeur , nomsheet = "volontes", lg = TRUE) 
 ```
 
-## Conditions du décès
-
-```{r}
-#| label: tbl-deces
-#| tbl-cap: Expression des volontés
-
-tt |> 
-dplyr::select(lieu_dc_souhait,lieu_dc_reel:contexte_dc,famille_presente  ) |> 
- tbl_summary(missing = "no",
-             value = list(famille_presente  = "Oui",
-                          lieu_dc_correct  = "Oui",
-                          sedation_profonde  = "Oui") ,
-              statistic = stt) |> 
-   bold_labels() |> 
-   modify_header(label ~ " ") |>
-  pexptabph(exp = expx, nomfich = classeur , nomsheet = "volontes", lg = TRUE) 
-```
 
 # Analyse factorielle
 
@@ -281,9 +250,9 @@ ttn <- tt |>
   dplyr::select(
     site:soins_domicile
   )
-# zz <- estim_ncpMCA(ttn)
-# zz <- zz$ncp
-zz <- 4
+ # zz <- estim_ncpMCA(ttn)
+ # zz <- zz$ncp
+zz <- 3
 ttn <- imputeMCA(ttn, ncp = zz)
 ttn <- ttn$completeObs
 #
@@ -297,7 +266,7 @@ rtt <- MCA(ttn, graph = FALSE)
 fviz_screeplot(rtt, addlabels = TRUE, ylim = c(0, 10))
 ```
 
-Les deux premières dimensions (les seules représentées sur les schémas suivants) ne représentent que \qty{15.8}{\percent} de la variance totale.
+Les deux premières dimensions (les seules représentées sur les schémas suivants) ne représentent que \qty{15.6}{\percent} de la variance totale.
 
 ```{r}
 #| label: fig-mcavar
@@ -306,11 +275,11 @@ Les deux premières dimensions (les seules représentées sur les schémas suiva
 fviz_mca_var(rtt,
              col.var = "contrib",
              repel = TRUE ,   
-             select.var = list(contrib = 16)) +
+             select.var = list(contrib = 20)) +
  scale_color_gsea()
 ```
 
-On voit se dessiner sur l'axe des ordonnées une opposition entre les patients bien suivis (médecin traitant, directives anticipées, projet de soin \dots) qui sont volontiers décédés à leur domicile s'opposant à mal suivi, SDF, etc. et sur l'axe des abscisses un groupe rural, non cancéreux mais avec des troubles cognitifs. 
+Seules les variables qui contribuent le plus au classement sont représentées. On voit se dessiner sur l'axe des ordonnées des patients bien suivis,  organisés qu'on peut diviser en deux sous groupes : hôpital vs domicile  & un groupe mal pris en charge. Les patient atteints de troubles cognitifs forment un groupe à part, bien individualisé. L'axe des absides semble être principalemnt orienté en cancer/non cancer.
 
 ```{r}
 #| label: fig-mcaind1
@@ -346,18 +315,29 @@ Le suivi des patients cancéreux semble différent de celui des autres patients.
 
 *Analyser les conditions et le lieu du décès (hôpital, domicile, EHPAD, etc.) et leur concordance avec les souhaits exprimés par les patients ou leurs proches.*
 
-Voir les tableaux @tbl-1voeux & @tbl-deces.
+.
+
+
+Les données n'ont été recueillies que pour `r nrow(zz)` patients. Noter que 13 patients ont changé de souhait : initialement le domicile pour l'\glspl{usp}.
+
+### Conditions du décès
 
 ```{r}
-#| label: 1prepa
-#| 
-zz <- tt |>
-  dplyr::select(lieu_dc_souhait, lieu_dc_reel) |> 
-  drop_na() 
+#| label: tbl-deces
+#| tbl-cap: Expression des volontés
+
+tt |> 
+dplyr::select(lieu_dc_souhait,lieu_dc_reel:contexte_dc,famille_presente  ) |> 
+ tbl_summary(missing = "no",
+             value = list(famille_presente  = "Oui",
+                          lieu_dc_correct  = "Oui",
+                          sedation_profonde  = "Oui") ,
+              statistic = stt) |> 
+   bold_labels() |> 
+   modify_header(label ~ " ") |>
+  pexptabph(exp = expx, nomfich = classeur , nomsheet = "deces", lg = TRUE) 
 ```
 
-
-Les données n'ont été recueillies que pour `r nrow(zz)` patients. Noter que 13 aptients ont changer de souhait, initialement le domicile pour l'USP.
 
 ### Vœux & réalité
 
@@ -365,7 +345,9 @@ Les données n'ont été recueillies que pour `r nrow(zz)` patients. Noter que 1
 #| label: tbl-1voeux
 #| tbl-cap: 'Lieu du décès : vœux du patient vs réalité'
 
-zz |> 
+tt |> 
+  dplyr::select(lieu_dc_souhait, lieu_dc_reel) |> 
+  drop_na() |> 
   tbl_cross(
     row = lieu_dc_souhait,
     col = lieu_dc_reel,
@@ -378,6 +360,10 @@ zz |>
 
 ```
 
+Un quart des patients souhaitant décédé à domicile ont eu leur souhait respecté.
+
+\newpage
+
 ### Facteurs associés au respect des souhaits
 
 ```{r}
@@ -385,14 +371,16 @@ zz |>
 #| tbl-cap: Facteurs associés au respect des souhaits
 #| 
 tt |>
-  dplyr::select(lieu_dc_correct, sexe:mt, cancer :directive_anticipee, visite_emsp, suivi_mt , soins_domicile : delai_deces) |>
+  dplyr::select(lieu_dc_correct, sexe:mt, cancer :nb_urg,projet_soin:directive_anticipee, visite_emsp, suivi_mt , soins_domicile : delai_deces) |>
   drop_na(lieu_dc_correct) |>
   tbl_summary(by = lieu_dc_correct, 
               missing = "no", 
               percent = "row") |> 
   add_p(test = ptest) |> 
   bold_p() |>
+  add_q() |>
     bold_labels() |> 
+   separate_p_footnotes() |> 
   modify_header(label ~ " ") |>
   pexptabph(exp = expx, nomfich = classeur , nomsheet = "voeuxfact1", lg = TRUE)
 ```
@@ -406,29 +394,274 @@ ttn <- imputeMCA(tt[,-1], ncp = 3)
 ttn <- ttn$completeObs
 var_label(ttn) <- var_label(tt[,-1])
 
-glm(formula = lieu_dc_correct ~ tutelle + diabete + trouble_cognitifs + + projett_soin + 
-    visite_emsp +
-    soins_domicile + delai_deces, family = "binomial", data = ttn) |> 
+glm(formula = lieu_dc_correct ~ diabete + cancer + diabete + respiratoire +  trouble_cognitifs + + projet_soin +  directive_anticipee +
+    visite_emsp + suivi_mt +
+    delai_deces, family = "binomial", data = ttn) |> 
   forest_model(format_options = list(
    text_size = 3))
 ```
-En analyse multivariée (régression logarithmique) seule la présence de soin à domicile semble influer sur le respect des souhaits du patient.
+En analyse multivariée (régression logistique) la qualité du suivi (présence de soin à domicile, MT\dots) semble influer sur le respect des souhaits du patient.
 
 
 ## Objectif 2
 *Évaluer l’implication du médecin généraliste dans la prise en charge palliative.*
 
-Voir le tableau @tbl-mt.
+
+```{r}
+#| label: tbl-mt
+#| tbl-cap: Médecin traitant
+
+tt |> 
+dplyr::select(mt: formation_sp) |> 
+ tbl_summary(missing = "no",
+              statistic = stt) |> 
+   bold_labels() |> 
+   modify_header(label ~ " ") |>
+  pexptabph(exp = expx, nomfich = classeur , nomsheet = "mt", lg = TRUE) 
+```
+
+```{r}
+#| label: fig-pyrmed
+#| fig-cap: Pyramide des âges (Médecin traitant)
+
+tt |> 
+    rename('Âge' = age_mt) |>
+apyramid::age_pyramid('Âge', sexe_mt,
+                      show_midpoint = FALSE) +  
+  theme_minimal() +
+    labs(
+    title = "Pyramide des âges (Médecin traitant)",
+    X = "Âge",
+    y = "Nombre de cas"
+  ) +
+  theme_light() +
+  scale_y_continuous(labels = c("Féminin","Masculin"), breaks = c(-30,30)) +
+  theme(
+    plot.title = element_text(size = 14, face = "bold"),
+    plot.subtitle = element_text(size = 12),
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(,
+      size = 12,
+      angle = 90,
+      vjust = .5
+    ),
+    axis.text.x = element_text(size = 12),
+    axis.text.y = element_text(size = 12),
+    legend.position = "none"
+  )
+```
 
 
+\newpage
 
 ## Objectif 3
 *Décrire les modalités d’accompagnement par les \glspl{emsp} et les dispositifs de soins à domicile.*
 
+```{r}
+#| label: tbl-parcours
+#| tbl-cap: parcours médical
 
+tt |> 
+dplyr::select(lata:nb_urg,projet_soin,visite_emsp,suivi_mt, soins_domicile) |> 
+ tbl_summary(missing = "no",
+             value = list(lata  = "Oui",
+                           projet_soin  = "Oui",
+                           visite_emsp  = "Oui",
+                           suivi_mt  = "Oui",
+                           soins_domicile  = "Oui"),
+                           
+              statistic = stt) |> 
+   bold_labels() |> 
+   modify_header(label ~ " ") |>
+  pexptabph(exp = expx, nomfich = classeur , nomsheet = "parcours", lg = TRUE) 
+```
+
+Sur les 78 cas pour lesquels la durée de suivi par l'\glspl{emsp} est possible, 50 (68 %) ont une durée de suivi inférieure à 30 jours.
+
+\newpage
 
 ## Objectif 4
 *Identifier les facteurs associés à un recours plus fréquent à l’hospitalisation.*
 
+
+
+
+```{r}
+#| label: tbl-facthosp
+#| tbl-cap: Facteurs associés à un recours plus fréquent à l’hospitalisation
+
+
+dfk <- tt|>
+  dplyr::select(
+    nb_hsop, sexe:mt, cancer:nb_urg, projet_soin:directive_anticipee, visite_emsp,
+    suivi_mt, soins_domicile:delai_deces
+  ) |>
+  drop_na(nb_hsop) |>
+  tbl_summary(
+    by = nb_hsop,
+    missing = "no",
+    percent = "row"
+  ) |>
+  add_p(test = ptest) |>
+  add_q() |> 
+  bold_labels() |>
+  modify_header(label ~ " ") |>
+  separate_p_footnotes() 
+
+dfk |> 
+      gtsummary::as_kable_extra(
+        escape = TRUE,
+        longtable = TRUE,
+        booktabs = TRUE
+      ) |>
+      kable_styling(latex_options = c("repeat_header","scale_down")) |> 
+  column_spec(1, width = "15em")
+
+    if (expx) {
+      dfk |>
+        as_tibble() |>
+        write_ods(path = classeur, sheet = "facthosp1", append = TRUE)
+    }
+  
+
+```
+
+
+
+
+
+```{r}
+#| label: tbl-dela1
+#| tbl-cap: "Délais"
+
+
+tt |> 
+   dplyr::select(starts_with("delai")) |>
+  drop_na() |> 
+  tbl_summary(
+                 type = all_continuous() ~ "continuous2",
+    statistic = all_continuous() ~ c(
+      "{median} ({p25}, {p75})",
+      "{min}, {max}" 
+    )) |> 
+    bold_labels() |> 
+  modify_header(label ~ "Délais en jour") |>
+  pexptabph(exp = expx, nomfich = classeur , nomsheet = "delai1", lg = TRUE)
+```
 ## Objectif 5
-*Explorer les leviers d’amélioration du repérage précoce des situations palliatives et de la continuité des parcours de soins entre domicile et hôpital.* 
+
+On étudie ici les délais entre l'entrée dans le parcours de soins, le premier contact avec l'\glspl{emsp} & le décès.
+
+### Délai diagnostic/EMSP
+
+```{r}
+#| label: tbl-survie1fact
+#| tbl-cap: Facteurs influant le délai diagnostic/EMSP
+
+tt |> 
+  dplyr::select(site:statut_oms,delai_contact) |> 
+  tbl_continuous(variable = delai_contact) |> 
+  add_p() |>
+    bold_p() |>
+  add_q() |>
+    bold_labels() |>modify_header(label ~ "" ) |>
+  pexptabph(exp = expx, nomfich = classeur , nomsheet = "survie1fact", lg = TRUE)
+```
+
+```{r}
+#| label: fig-factdelai1
+#| fig-cap: Facteurs influant le délai diagnostic/EMSP
+
+ttn <- ttn |> 
+  dplyr::filter(delai_contact > 0) |>
+  mutate(dd = log(delai_contact)) 
+ 
+
+
+lm(formula = dd ~ zone + cancer  + trouble_cognitifs + 
+           +            respiratoire + statut_oms + lata  , data = ttn) |> 
+    forest_model(format_options = list(
+   text_size = 3))
+
+```
+
+
+```{r}
+#| label: fig-survie1
+#| fig-cap: Délai diagnostic / prse en charge EMSP
+
+zz <- tt |> 
+  mutate(deces = 1) 
+aa <-   survfit(Surv(zz$delai_contact, zz$deces) ~ 1) 
+  
+ggsurvplot(aa, data = zz, 
+           ggtheme = theme_light(), 
+           axes.offset = FALSE,
+           break.time.by = 365.25,
+           surv.median.line = "v",
+           xscale = "d_y",
+           xlab= "ans",
+           ylab = "survie",
+           legend = "none", 
+           title = "Délai diagnostic / prse en charge EMSP") 
+```
+
+
+
+### Délai prise en charge EMSP / décès
+```{r}
+#| label: tbl-survie2fact
+#| tbl-cap: Facteurs influant le délai EMSP/décès
+
+tt |> 
+  dplyr::select(site:lata,delai_deces) |> 
+  tbl_continuous(variable = delai_deces) |> 
+  add_p() |>
+    bold_p() |>
+  add_q() |>
+    bold_labels() |>modify_header(label ~ "" ) |>
+  pexptabph(exp = expx, nomfich = classeur , nomsheet = "survie2fact", lg = TRUE)
+```
+
+
+La zone d'habitat (urbain/rural) semble influer sur le délai entre le contact avec l'\glspl{emsp} et le décès.
+
+
+
+```{r}
+#| label: fig-factdelai2
+#| fig-cap: Facteurs influant le délai EMPS/décès
+
+ttn <- ttn |> 
+  dplyr::filter(delai_deces > 0) |>
+  mutate(dd = log(delai_deces)) 
+ 
+
+
+lm(formula = dd ~ zone + cancer  + trouble_cognitifs + 
+           +            respiratoire + statut_oms + lata  , data = ttn) |> 
+    forest_model(format_options = list(
+   text_size = 3))
+
+```
+
+```{r}
+#| label: fig-survie2
+#| fig-cap: Survie après prise en charge par l'EMSP
+
+zz <- tt |> 
+  mutate(deces = 1) 
+aa <-   survfit(Surv(zz$delai_deces, zz$deces) ~ 1) 
+  
+ggsurvplot(aa, data = zz, 
+           ggtheme = theme_light(), 
+           axes.offset = FALSE,
+           break.time.by = 365.25,
+           surv.median.line = "v",
+           xscale = "d_y",
+           xlab= "ans",
+           ylab = "survie",
+           legend = "none", 
+           title = "Survie après prise en charge par l'EMSP") 
+```
+
